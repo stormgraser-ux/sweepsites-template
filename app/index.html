@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sweepsites Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <div class="nav-brand-icon">S</div>
+        <span>Sweepsites</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link active">Tracker</a>
+        <a href="/autorun.html" class="nav-link">Autorun</a>
+        <a href="/taxes.html" class="nav-link">Tax Estimator</a>
+        <a href="/reports.html" class="nav-link">History</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Hero Bar (compact single row) -->
+    <div class="hero-bar">
+      <div class="hero-bar-left">
+        <div class="hero-progress-ring">
+          <svg width="48" height="48">
+            <circle class="bg" cx="24" cy="24" r="20"></circle>
+            <circle class="progress" cx="24" cy="24" r="20"
+              stroke-dasharray="125.66"
+              stroke-dashoffset="125.66"
+              id="progressRing"></circle>
+          </svg>
+          <div class="hero-progress-text" id="progressPercent">0%</div>
+        </div>
+        <div class="hero-bar-count">
+          <span id="progressCount">0 of 0 collected</span>
+          <span class="hero-bar-date" id="currentDate"></span>
+        </div>
+      </div>
+      <div class="hero-bar-stats">
+        <div class="hero-stat-item">
+          <div class="hero-stat-value" id="totalSC">$0.00</div>
+          <div class="hero-stat-label">SC Today</div>
+        </div>
+        <div class="hero-stat-item">
+          <div class="hero-stat-value neutral" id="totalBankroll">$0</div>
+          <div class="hero-stat-label">Bankroll</div>
+        </div>
+        <div class="hero-stat-item">
+          <div class="hero-stat-value neutral" id="totalPnL">$0</div>
+          <div class="hero-stat-label">YTD P&L</div>
+          <div class="hero-stat-sub" id="totalPnLAllTime"></div>
+        </div>
+      </div>
+      <div class="hero-bar-actions">
+        <div class="redeemable-badge" id="redeemableBadge" style="display: none;">
+          <span id="redeemableCount">0</span> redeemable
+          <div class="redeemable-dropdown" id="redeemableDropdown"></div>
+        </div>
+        <div id="healthBadge" class="health-badge" style="display: none; position: relative; cursor: pointer;">
+          <span id="healthIcon"></span>
+          <span id="healthText"></span>
+          <div id="healthPanel" class="health-panel" style="display: none;"></div>
+        </div>
+        <button class="btn btn-secondary btn-sm hero-chrome-btn" id="startChromeBtn" title="Launch Chrome">
+          <span class="chrome-dot" id="chromeDot"></span>
+        </button>
+        <button class="btn btn-primary btn-sm" id="collectAllBtn">▶ Collect All</button>
+        <button class="btn btn-secondary btn-sm" id="addSiteBtn" title="Add Site">+</button>
+      </div>
+    </div>
+
+    <!-- Pinned focus strip (max 4) -->
+    <div class="focus-strip" id="focusStrip" style="display: none;"></div>
+
+    <!-- Ready count CTA banner -->
+    <div class="cta-bar" id="readyCtaBar" style="display: none;">
+      <span class="cta-bar-icon">⚡</span>
+      <div class="cta-bar-msg">
+        <strong id="readyCtaCount">0</strong> sites ready to collect right now
+      </div>
+      <div class="cta-bar-spacer"></div>
+      <button class="btn btn-primary btn-sm" id="readyCtaBtn">Sweep all</button>
+    </div>
+
+    <!-- Unified Sites Section -->
+    <div class="section-card" id="sitesSection">
+      <div class="section-header">
+        <div class="section-header-left">
+          <div class="filter-pills" id="filterPills">
+            <button class="filter-pill active" data-filter="all">All <span class="filter-pill-count" id="filterCountAll">0</span></button>
+            <button class="filter-pill" data-filter="ready">Ready <span class="filter-pill-count" id="filterCountReady">0</span></button>
+            <button class="filter-pill" data-filter="cooldown">Cooldown <span class="filter-pill-count" id="filterCountCooldown">0</span></button>
+            <button class="filter-pill" data-filter="issues">Issues <span class="filter-pill-count" id="filterCountIssues">0</span></button>
+          </div>
+          <span class="last-run-label" id="lastRunLabel"></span>
+        </div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search...">
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="sites-grid" id="sitesGrid"></div>
+        <div class="empty-state" id="sitesEmpty" style="display: none;">
+          <h3>All done for today!</h3>
+          <p>You've collected from all your sites.</p>
+        </div>
+        <div class="show-hidden-link" id="showHiddenLink" style="display: none;">
+          <button class="btn btn-ghost btn-sm" id="showHiddenBtn">Show <span id="hiddenCountDisplay">0</span> hidden</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; margin-top: 16px;">
+      <button class="btn btn-ghost btn-sm" id="exportBtn">Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <div class="toast-icon">✓</div>
+    <div class="toast-message" id="toastMessage">Site marked as collected!</div>
+  </div>
+
+  <!-- Collection Modal (Tabbed) -->
+  <div class="modal" id="collectModal">
+    <div class="modal-content modal-content-wide">
+      <!-- Persistent Header -->
+      <div class="modal-header-persistent">
+        <div class="modal-header-top">
+          <div class="modal-header-info">
+            <h2 id="modalSiteName">Site Name</h2>
+            <div class="modal-header-stats">
+              <span class="modal-balance" id="modalBalance">$0.00</span>
+              <span class="modal-pnl" id="modalPnl"></span>
+            </div>
+          </div>
+          <div class="modal-header-actions">
+            <button class="btn btn-secondary btn-sm" id="visitSiteBtnHeader">Visit Site</button>
+            <button class="close-btn" id="closeModal">&times;</button>
+          </div>
+        </div>
+        <div id="suspiciousBannerArea"></div>
+        <div id="communityWarningArea"></div>
+        <div id="playthroughBannerArea"></div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-tab="overview">Overview</button>
+        <button class="modal-tab" data-tab="transactions">Transactions</button>
+        <button class="modal-tab" data-tab="collect">Collect</button>
+        <button class="modal-tab" data-tab="settings">Settings</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: Overview -->
+        <div class="modal-tab-content active" id="tabOverview">
+          <div id="washingGames" style="display: none;">
+            <label class="tab-section-label">Best Washing Games</label>
+            <div id="washingGamesList" class="washing-games-list"></div>
+          </div>
+          <div id="excludedWashGames" style="display: none;"></div>
+          <div id="crossWashSection" style="display: none;">
+            <label class="tab-section-label">Cross-Wash Safety</label>
+            <div id="crossWashInfo"></div>
+          </div>
+          <div id="realizedRtp" style="display: none;">
+            <label class="tab-section-label">Realized RTP</label>
+            <div id="realizedRtpList" class="realized-rtp-list"></div>
+          </div>
+          <div class="tab-empty-state" id="overviewEmpty" style="display: none;">
+            <p>No game data for this site yet.</p>
+          </div>
+        </div>
+
+        <!-- Tab 2: Transactions -->
+        <div class="modal-tab-content" id="tabTransactions">
+          <label class="tab-section-label">Record Purchase</label>
+          <div id="purchaseRows">
+            <div class="purchase-row form-row">
+              <div class="form-group">
+                <label>$ Paid</label>
+                <input type="number" class="purchase-amount" step="0.01" placeholder="9.99">
+              </div>
+              <div class="form-group">
+                <label>SC Received</label>
+                <input type="number" class="purchase-sc" step="0.01" placeholder="10.00">
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-add-row" id="addPurchaseRow" title="Add another line">+</button>
+          <div id="purchaseRatioDisplay" class="purchase-ratio" style="display:none;">
+            <span id="purchaseRatioValue"></span>
+          </div>
+          <div class="modal-actions compact">
+            <button class="btn btn-success" id="confirmSitePurchase">Record Purchase</button>
+          </div>
+
+          <hr class="tab-divider">
+
+          <label class="tab-section-label">Request Withdrawal</label>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Amount ($)</label>
+              <input type="number" id="redeemAmount" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label>Destination</label>
+              <input type="text" id="redeemDest" placeholder="e.g. KeyBank" value="KeyBank">
+            </div>
+          </div>
+          <div class="modal-actions compact">
+            <button class="btn btn-success" id="confirmRedeem">Request Withdrawal</button>
+          </div>
+
+          <div id="pendingRedemptions"></div>
+
+          <hr class="tab-divider">
+          <label class="tab-section-label">Recent History</label>
+          <div id="transactionHistory" class="transaction-history"></div>
+        </div>
+
+        <!-- Tab 3: Collect -->
+        <div class="modal-tab-content" id="tabCollect">
+          <div class="form-group">
+            <label>SC Collected</label>
+            <input type="number" id="scAmount" step="0.01" placeholder="0.00">
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="confirmCollect">Mark Collected</button>
+          </div>
+          <button class="btn btn-warning btn-sm" id="uncollectBtn" style="display: none; margin-top: 12px;">Uncollect</button>
+
+          <hr class="tab-divider">
+
+          <label class="tab-section-label">Log Session</label>
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <label>Game</label>
+              <select id="sessionGame">
+                <option value="">— select game —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Starting SC</label>
+              <input type="number" id="sessionStart" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label>Ending SC</label>
+              <input type="number" id="sessionEnd" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Spins / Rounds</label>
+              <input type="number" id="sessionSpins" step="1" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Bet Size (SC)</label>
+              <input type="number" id="sessionBet" step="0.01" placeholder="0.10">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Total Wagered</label>
+              <input type="number" id="sessionPlaythrough" step="0.01" placeholder="Auto or manual">
+            </div>
+            <div class="form-group">
+              <label>Session P&amp;L</label>
+              <div class="session-pnl" id="sessionPnl">--</div>
+            </div>
+          </div>
+          <div id="sessionRtpDisplay" class="session-rtp-display" style="display: none;">
+            <span class="session-rtp-label">Realized RTP:</span>
+            <span class="session-rtp-value" id="sessionRtpValue">--</span>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="confirmSession">Log Session</button>
+          </div>
+        </div>
+
+        <!-- Tab 4: Settings -->
+        <div class="modal-tab-content" id="tabSettings">
+          <div id="accountSetupContainer"></div>
+          <div class="form-group">
+            <label>Site URL</label>
+            <input type="url" id="siteUrl" placeholder="https://example.com">
+          </div>
+          <div class="settings-pin-row">
+            <div>
+              <div class="settings-pin-title">Focus strip</div>
+              <div class="settings-pin-sub">Pin up to 4 sites to surface them above the grid.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="togglePinBtn">Pin to focus</button>
+          </div>
+          <div style="margin-top: 24px;">
+            <button class="btn btn-danger" id="toggleHideBtn">Hide Site</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Site Modal -->
+  <div class="modal" id="addSiteModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add New Site</h2>
+        <button class="close-btn" id="closeAddModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Site Name *</label>
+          <input type="text" id="newSiteName" placeholder="Chumba Casino">
+        </div>
+        <div class="form-group">
+          <label>URL</label>
+          <input type="url" id="newSiteUrl" placeholder="https://chumbacasino.com">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Typical SC</label>
+            <input type="number" id="newSiteSC" step="0.01" value="0.30">
+          </div>
+          <div class="form-group">
+            <label>Typical GC</label>
+            <input type="number" id="newSiteGC" step="1" value="10000">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Reset Type</label>
+          <select id="newSiteReset">
+            <option value="24hr">24 Hour</option>
+            <option value="fixed_time">Fixed Time (Midnight)</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="cancelAddSite">Cancel</button>
+          <button class="btn btn-primary" id="saveNewSite">Add Site</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Automation Modal -->
+  <div class="modal" id="automationModal">
+    <div class="modal-content" style="max-width: 900px;">
+      <div class="modal-header">
+        <h2>
+          <span id="automationTitle">Collection Run</span>
+          <span id="automationSpinner" class="spinner" style="display: none;"></span>
+        </h2>
+        <button class="close-btn" id="closeAutomationModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Pre-run Controls -->
+        <div id="automationControls">
+          <p style="margin-bottom: 12px; color: var(--text-muted);">
+            Run automated collectors for all sites (24hr + fixed-time).
+            Make sure Chrome is running with debug mode first!
+          </p>
+          <div id="automationPreview" class="automation-preview" style="display: none;">
+            <div class="preview-header">
+              <span id="previewCount">0</span> sites ready to collect
+            </div>
+            <div id="previewSiteGrid" class="automation-site-grid"></div>
+          </div>
+          <div class="modal-actions" style="justify-content: flex-start; gap: 8px;">
+            <button class="btn btn-primary" id="startCollectAll">▶ Start Collection</button>
+            <button class="btn btn-secondary" id="startCollectDry">Test (Dry Run)</button>
+          </div>
+        </div>
+
+        <!-- Progress View -->
+        <div id="automationProgress" style="display: none;">
+          <div id="automationStatusBanner" class="automation-status-banner">
+            <span id="automationCurrentSite">Initializing...</span>
+            <button class="btn btn-danger btn-sm" id="stopAutomation" style="display: none; margin-left: auto;">■ Stop</button>
+          </div>
+
+          <div id="automationStatsBar" class="automation-stats-bar">
+            <div class="stat-item success">
+              <span class="stat-icon">✓</span>
+              <span id="statCollected">0</span> collected
+            </div>
+            <div class="stat-item cooldown">
+              <span class="stat-icon">⏸</span>
+              <span id="statCooldown">0</span> cooldown
+            </div>
+            <div class="stat-item failed">
+              <span class="stat-icon">✗</span>
+              <span id="statFailed">0</span> failed
+            </div>
+            <div class="stat-item sc">
+              <span class="stat-icon">💰</span>
+              +<span id="statSC">0</span> SC
+            </div>
+          </div>
+
+          <div id="automationSiteGrid" class="automation-site-grid"></div>
+
+          <div id="automationFailures" class="automation-failures" style="display: none;">
+            <div class="failures-header">
+              <span>❌ Failed Sites</span>
+              <button class="btn btn-ghost btn-sm" id="copyFailures" title="Copy error summary for debugging">
+                📋 Copy for Claude
+              </button>
+            </div>
+            <div id="failuresList" class="failures-list"></div>
+          </div>
+
+          <div id="automationComplete" class="automation-complete" style="display: none;">
+            <div class="complete-icon" id="completeIcon">✓</div>
+            <div class="complete-text" id="completeText">Collection Complete!</div>
+          </div>
+
+          <details class="raw-log-details">
+            <summary>Show Raw Log</summary>
+            <div id="automationOutput" class="automation-raw-log"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Welcome Wizard Modal -->
+  <div class="modal" id="welcomeWizardModal">
+    <div class="modal-content wizard-content">
+      <div class="wizard-header">
+        <div class="wizard-progress">
+          <span class="wizard-step-label" id="wizardStepLabel">Step 1 of 4</span>
+          <div class="wizard-progress-track">
+            <div class="wizard-progress-fill" id="wizardProgressFill"></div>
+          </div>
+        </div>
+        <button class="close-btn" id="closeWizardBtn">&times;</button>
+      </div>
+
+      <div class="wizard-step active" id="wizardStep1">
+        <div class="modal-body">
+          <h2 class="wizard-title">Welcome to Sweepsites</h2>
+          <p class="wizard-intro">You've found a tracker for sweepstakes casinos — a category of legal online games that give away real cash prizes through free daily promotions.</p>
+          <div class="wizard-explainer">
+            <div class="wizard-coin-row">
+              <div class="wizard-coin-card">
+                <div class="coin-badge coin-gc">GC</div>
+                <div>
+                  <div class="coin-name">Gold Coins</div>
+                  <div class="coin-desc">Play money. Fun for trying games, but can't be cashed out. Worthless outside the game.</div>
+                </div>
+              </div>
+              <div class="wizard-coin-card accent-card">
+                <div class="coin-badge coin-sc">SC</div>
+                <div>
+                  <div class="coin-name">Sweep Coins</div>
+                  <div class="coin-desc">Worth $1 each. These can be redeemed for real cash. This is what you're after.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="wizard-callout">
+            <p>Sweepstakes casinos hand out free SC as daily promotions. Sweepsites tracks which ones you've collected from so you never miss a day.</p>
+          </div>
+          <p class="wizard-note">No gambling required — you can collect free daily rewards and never spend a cent.</p>
+          <div class="wizard-actions">
+            <a href="#" class="wizard-skip-link" id="wizardSkipLink">Skip setup</a>
+            <button class="btn btn-primary" id="wizardNext1">Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="wizardStep2">
+        <div class="modal-body">
+          <h2 class="wizard-title">A few things to know</h2>
+          <div class="wizard-warning-box">
+            <div class="warning-icon">⚠</div>
+            <div>
+              <strong>Check your state</strong>
+              <p>Sweepstakes casinos are not available everywhere. If you're in <strong>California, New Jersey, New York, Connecticut, or Montana</strong> — these sites are banned in your state.</p>
+            </div>
+          </div>
+          <div class="wizard-info-block">
+            <h4>Payouts take time</h4>
+            <p>Payouts range from 1 day to 2 months depending on the site and your account status. Treat this like building a small side income, not a quick flip. Never put in money you'll need soon.</p>
+          </div>
+          <div class="wizard-highlight-box">
+            <div class="highlight-icon">💡</div>
+            <div>
+              <strong>Verify your identity early</strong>
+              <p>Verify your identity at every site right after signup — not when you want to cash out. Your legal name must match your ID and PayPal exactly. Doing it early means faster payouts later.</p>
+            </div>
+          </div>
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" id="wizardBack2">&larr; Back</button>
+            <button class="btn btn-primary" id="wizardNext2">Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="wizardStep3">
+        <div class="modal-body">
+          <h2 class="wizard-title">Stay on top of bonuses</h2>
+          <p class="wizard-intro">Sites drop free bonus codes constantly. The best way to catch them: join the communities.</p>
+          <div class="wizard-community-list">
+            <a class="wizard-community-item" href="https://reddit.com/r/beermoney" target="_blank">
+              <div class="community-icon">r/</div>
+              <div>
+                <div class="community-name">r/beermoney</div>
+                <div class="community-desc">General free money and sweepstakes — the mothership for this hobby</div>
+              </div>
+            </a>
+            <a class="wizard-community-item" href="https://reddit.com/r/sweepstakes" target="_blank">
+              <div class="community-icon">r/</div>
+              <div>
+                <div class="community-name">r/sweepstakes</div>
+                <div class="community-desc">Dedicated sweepstakes discussion and code drops</div>
+              </div>
+            </a>
+            <div class="wizard-community-item no-link">
+              <div class="community-icon">DC</div>
+              <div>
+                <div class="community-name">Site Discords</div>
+                <div class="community-desc">Most major sites have their own Discord where bonus drops hit in real time — check each site's footer or help page for their invite link</div>
+              </div>
+            </div>
+          </div>
+          <p class="wizard-note">These communities aggregate everything in one place and send notifications when something new drops.</p>
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" id="wizardBack3">&larr; Back</button>
+            <button class="btn btn-primary" id="wizardNext3">Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="wizardStep4">
+        <div class="modal-body">
+          <h2 class="wizard-title">Start here — highest daily earners</h2>
+          <p class="wizard-intro">These sites offer the best free daily SC. Pick 3–5 to start. More is better once you're in a routine — don't overwhelm yourself on day 1.</p>
+          <div class="wizard-site-grid" id="wizardSiteGrid"></div>
+          <p class="wizard-note" style="margin-top: 16px;">Checking a site means you're joining it. Clicking "Join" opens it in a new tab.</p>
+          <div class="wizard-actions" style="margin-top: 24px;">
+            <button class="btn btn-secondary" id="wizardBack4">&larr; Back</button>
+            <button class="btn btn-primary" id="wizardDone">Done &mdash; let&apos;s go &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

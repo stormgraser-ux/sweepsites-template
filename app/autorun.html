@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autorun - Sweepsites Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <style>
+    .autorun-container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 80px; }
+
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 22px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .status-banner.idle      { border-left-color: #6b7280; }
+    .status-banner.waiting   { border-left-color: #3b82f6; }
+    .status-banner.running   { border-left-color: #fbbf24; }
+    .status-banner.finished  { border-left-color: #10b981; }
+
+    .status-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-banner.idle     .status-dot { background: #6b7280; }
+    .status-banner.waiting  .status-dot { background: #3b82f6; }
+    .status-banner.running  .status-dot { background: #fbbf24; animation: pulse 1.4s ease-in-out infinite; }
+    .status-banner.finished .status-dot { background: #10b981; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .status-main { flex: 1; }
+    .status-main .status-title {
+      font-size: 16px; font-weight: 600; color: var(--text);
+      margin-bottom: 4px;
+    }
+    .status-main .status-sub {
+      font-size: 13px; color: var(--text-muted);
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .date-chip {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .summary-card .label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .summary-card .value {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+    }
+    .summary-card .value.pos { color: #10b981; }
+    .summary-card .value.neg { color: #ef4444; }
+    .summary-card .value.warn { color: #fbbf24; }
+
+    .autorun-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .autorun-section-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .autorun-section-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+    }
+    .autorun-section-header .count {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .fix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .fix-table th, .fix-table td {
+      padding: 10px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .fix-table th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 500;
+      background: var(--bg-dark);
+    }
+    .fix-table tr:last-child td { border-bottom: none; }
+    .fix-table td.site { font-family: "JetBrains Mono", monospace; font-weight: 500; }
+    .fix-table td.notes { color: var(--text-muted); max-width: 600px; }
+
+    .outcome-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .outcome-Fixed      { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .outcome-Partial    { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .outcome-Blocked    { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+    .outcome-Escalated  { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
+    .outcome-Abandoned  { background: rgba(107, 114, 128, 0.15); color: #9ca3af; }
+
+    .queue-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .queue-list li {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .queue-list li:last-child { border-bottom: none; }
+    .queue-list .qsite {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 600;
+      color: var(--text);
+      font-size: 13px;
+      flex-shrink: 0;
+      min-width: 140px;
+    }
+    .queue-list .qnote {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .failure-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .failure-row:last-child { border-bottom: none; }
+    .failure-row .fid {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 600;
+      min-width: 160px;
+    }
+    .failure-row .fcode {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 2px 8px;
+      background: var(--bg-dark);
+      border-radius: 4px;
+      min-width: 120px;
+      text-align: center;
+    }
+    .failure-row .ferr {
+      color: var(--text-muted);
+      flex: 1;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .event-log {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      padding: 14px 20px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .event-log .event-line {
+      padding: 3px 0;
+      color: var(--text-muted);
+    }
+    .event-log .event-line .ts { color: #6b7280; margin-right: 10px; }
+
+    .refresh-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 20px;
+      font-family: "JetBrains Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <div class="nav-brand-icon">S</div>
+        <span>Sweepsites</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Tracker</a>
+        <a href="/autorun.html" class="nav-link active">Autorun</a>
+        <a href="/taxes.html" class="nav-link">Tax Estimator</a>
+        <a href="/reports.html" class="nav-link">History</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="autorun-container">
+    <div id="statusBanner" class="status-banner idle">
+      <div class="status-dot"></div>
+      <div class="status-main">
+        <div class="status-title" id="statusTitle">Loading…</div>
+        <div class="status-sub" id="statusSub"></div>
+      </div>
+      <div class="date-chip" id="dateChip"></div>
+    </div>
+
+    <div class="summary-cards" id="summaryCards"></div>
+
+    <div class="autorun-section" id="zeroDeltaSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Zero delta (collected, nothing gained)</h3>
+        <span class="count" id="zeroDeltaCount"></span>
+      </div>
+      <div id="zeroDeltaBody"></div>
+    </div>
+
+    <div class="autorun-section" id="unknownDeltaSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Unknown delta (claim unconfirmed)</h3>
+        <span class="count" id="unknownDeltaCount"></span>
+      </div>
+      <div id="unknownDeltaBody"></div>
+    </div>
+
+    <div class="autorun-section" id="failuresSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Today's failures</h3>
+        <span class="count" id="failuresCount"></span>
+      </div>
+      <div id="failuresBody"></div>
+    </div>
+
+    <div class="autorun-section" id="fixSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Fix results</h3>
+        <span class="count" id="fixCount"></span>
+      </div>
+      <div id="fixBody"></div>
+    </div>
+
+    <div class="autorun-section" id="browserClaudeSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Needs browser Claude</h3>
+        <span class="count" id="browserClaudeCount"></span>
+      </div>
+      <div id="browserClaudeBody"></div>
+    </div>
+
+    <div class="autorun-section" id="userInterventionSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Needs user intervention</h3>
+        <span class="count" id="userInterventionCount"></span>
+      </div>
+      <div id="userInterventionBody"></div>
+    </div>
+
+    <div class="autorun-section" id="recoveredSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Recovered this run</h3>
+        <span class="count" id="recoveredCount"></span>
+      </div>
+      <div id="recoveredBody"></div>
+    </div>
+
+    <div class="autorun-section" id="eventsSection" style="display:none;">
+      <div class="autorun-section-header">
+        <h3>Scheduler events</h3>
+      </div>
+      <div>
+        <div class="event-log" id="eventLog"></div>
+      </div>
+    </div>
+
+    <div class="refresh-note" id="refreshNote">Refreshing every 30s</div>
+  </div>
+
+  <script>
+    const API = '/api/autorun/today';
+
+    function h(tag, attrs = {}, children = []) {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs || {})) {
+        if (v == null) continue;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else el.setAttribute(k, v);
+      }
+      const kids = Array.isArray(children) ? children : [children];
+      for (const c of kids) {
+        if (c == null) continue;
+        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      }
+      return el;
+    }
+
+    function clear(node) {
+      while (node.firstChild) node.removeChild(node.firstChild);
+    }
+
+    function fmtPacific(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      });
+    }
+
+    function fmtDuration(ms) {
+      if (!ms || ms < 0) return '—';
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      if (m >= 60) return `${Math.floor(m / 60)}h ${m % 60}m`;
+      return `${m}m ${s}s`;
+    }
+
+    function renderStatus(d) {
+      const banner = document.getElementById('statusBanner');
+      const title = document.getElementById('statusTitle');
+      const sub = document.getElementById('statusSub');
+      const chip = document.getElementById('dateChip');
+
+      banner.className = 'status-banner ' + d.scheduler.status;
+      chip.textContent = d.pacific_date;
+
+      const sched = d.scheduler;
+      if (sched.status === 'running') {
+        title.textContent = 'Autorun in progress';
+        sub.textContent = `Started ${fmtPacific(sched.run_started_at)} PT · runner=${sched.runner || 'autorun'}`;
+      } else if (sched.status === 'finished') {
+        title.textContent = 'Autorun complete';
+        const startT = fmtPacific(sched.run_started_at);
+        const endT = fmtPacific(sched.run_finished_at);
+        const dur = (sched.run_started_at && sched.run_finished_at)
+          ? new Date(sched.run_finished_at) - new Date(sched.run_started_at)
+          : null;
+        sub.textContent = `${startT} → ${endT} PT${dur ? ' · ' + fmtDuration(dur) : ''}`;
+      } else if (sched.status === 'waiting') {
+        title.textContent = 'Waiting for drift target';
+        sub.textContent = `Target: ${sched.target_readable || fmtPacific(sched.target)} · mode=${sched.mode || 'drift'}`;
+      } else {
+        title.textContent = 'No autorun scheduled today';
+        sub.textContent = 'Scheduler not active';
+      }
+    }
+
+    function renderSummary(d) {
+      const cards = document.getElementById('summaryCards');
+      clear(cards);
+
+      if (!d.collect) {
+        cards.appendChild(
+          h('div', { class: 'summary-card' }, [
+            h('div', { class: 'label', text: 'Awaiting batch' }),
+            h('div', { class: 'value', text: '—' }),
+          ])
+        );
+        return;
+      }
+
+      const c = d.collect;
+      const scVal = c.totals.sc >= 0 ? `+${c.totals.sc.toFixed(2)}` : c.totals.sc.toFixed(2);
+      const items = [
+        { label: 'Collected', value: String(c.stats.collected), cls: 'pos' },
+        { label: 'Cooldown',  value: String(c.stats.cooldown),  cls: '' },
+        { label: 'Failed',    value: String(c.stats.failed),    cls: c.stats.failed > 0 ? 'neg' : '' },
+        { label: 'Unverified',value: String(c.stats.unverified),cls: c.stats.unverified > 0 ? 'warn' : '' },
+        { label: 'SC',        value: scVal, cls: 'pos' },
+        { label: 'GC',        value: `+${(c.totals.gc || 0).toLocaleString()}`, cls: 'pos' },
+        { label: 'Duration',  value: fmtDuration(c.duration_ms), cls: '' },
+      ];
+
+      for (const it of items) {
+        cards.appendChild(
+          h('div', { class: 'summary-card' }, [
+            h('div', { class: 'label', text: it.label }),
+            h('div', { class: `value ${it.cls}`.trim(), text: it.value }),
+          ])
+        );
+      }
+    }
+
+    function renderZeroDelta(d) {
+      const section = document.getElementById('zeroDeltaSection');
+      const body = document.getElementById('zeroDeltaBody');
+      const count = document.getElementById('zeroDeltaCount');
+      const items = d.collect && d.collect.zeroDelta ? d.collect.zeroDelta : [];
+      if (!items.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      count.textContent = `${items.length} site${items.length === 1 ? '' : 's'}`;
+      clear(body);
+      for (const s of items) {
+        body.appendChild(
+          h('div', { class: 'failure-row' }, [
+            h('div', { class: 'fid', text: s.id }),
+            h('div', { class: 'fcode', text: s.confidence || 'unknown' }),
+            h('div', { class: 'ferr', text: 'Collected with 0 SC and 0 GC' }),
+          ])
+        );
+      }
+    }
+
+    function renderUnknownDelta(d) {
+      const section = document.getElementById('unknownDeltaSection');
+      const body = document.getElementById('unknownDeltaBody');
+      const count = document.getElementById('unknownDeltaCount');
+      const items = d.collect && d.collect.unknownDelta ? d.collect.unknownDelta : [];
+      if (!items.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      count.textContent = `${items.length} site${items.length === 1 ? '' : 's'}`;
+      clear(body);
+      for (const s of items) {
+        const scStr = s.sc > 0 ? `+${s.sc.toFixed(2)} SC` : '';
+        const gcStr = s.gc > 0 ? `+${s.gc.toLocaleString()} GC` : '';
+        const deltaStr = [scStr, gcStr].filter(Boolean).join(', ') || 'no delta recorded';
+        body.appendChild(
+          h('div', { class: 'failure-row' }, [
+            h('div', { class: 'fid', text: s.id }),
+            h('div', { class: 'fcode', text: s.confidence || 'null' }),
+            h('div', { class: 'ferr', text: `Assumed — ${deltaStr}` }),
+          ])
+        );
+      }
+    }
+
+    function renderFailures(d) {
+      const section = document.getElementById('failuresSection');
+      const body = document.getElementById('failuresBody');
+      const count = document.getElementById('failuresCount');
+      const fails = d.collect && d.collect.failures ? d.collect.failures : [];
+      if (!fails.length) { section.style.display = 'none'; return; }
+
+      section.style.display = 'block';
+      count.textContent = `${fails.length} site${fails.length === 1 ? '' : 's'}`;
+      clear(body);
+      for (const f of fails) {
+        body.appendChild(
+          h('div', { class: 'failure-row' }, [
+            h('div', { class: 'fid', text: f.id }),
+            h('div', { class: 'fcode', text: f.errorCode || f.status || 'UNKNOWN' }),
+            h('div', { class: 'ferr', text: f.error || '(no error message)' }),
+          ])
+        );
+      }
+    }
+
+    function latestRun(autorun) {
+      if (!autorun || !autorun.runs || !autorun.runs.length) return null;
+      return autorun.runs[autorun.runs.length - 1];
+    }
+
+    function renderFixResults(d) {
+      const run = latestRun(d.autorun);
+      const section = document.getElementById('fixSection');
+      const body = document.getElementById('fixBody');
+      const count = document.getElementById('fixCount');
+
+      const rows = run && run.fix_results ? run.fix_results : [];
+      clear(body);
+
+      if (!rows.length) {
+        if (d.scheduler.status === 'finished' && d.collect && d.collect.stats.failed > 0) {
+          section.style.display = 'block';
+          count.textContent = 'awaiting sidecar';
+          body.appendChild(
+            h('div', { class: 'empty-state',
+              text: `Autorun finished but the JSON sidecar was not written. Check data/run-reports/autorun-${d.pacific_date}.md for details.` })
+          );
+        } else if (d.collect && d.collect.stats.failed === 0) {
+          section.style.display = 'block';
+          count.textContent = 'no failures';
+          body.appendChild(h('div', { class: 'empty-state', text: 'Clean run — no fix attempts needed.' }));
+        } else {
+          section.style.display = 'none';
+        }
+        return;
+      }
+
+      section.style.display = 'block';
+      count.textContent = `${rows.length} attempted`;
+
+      const thead = h('thead', {}, [
+        h('tr', {}, [
+          h('th', { text: 'Site' }),
+          h('th', { text: 'Outcome' }),
+          h('th', { text: 'Attempts' }),
+          h('th', { text: 'Notes' }),
+        ]),
+      ]);
+      const tbody = h('tbody');
+      for (const r of rows) {
+        tbody.appendChild(
+          h('tr', {}, [
+            h('td', { class: 'site', text: r.site }),
+            h('td', {}, [ h('span', { class: `outcome-pill outcome-${r.outcome}`, text: r.outcome }) ]),
+            h('td', { text: String(r.attempts ?? '—') }),
+            h('td', { class: 'notes', text: r.notes || '' }),
+          ])
+        );
+      }
+      body.appendChild(h('table', { class: 'fix-table' }, [thead, tbody]));
+    }
+
+    function renderQueue(sectionId, bodyId, countId, items, keyField) {
+      const section = document.getElementById(sectionId);
+      const body = document.getElementById(bodyId);
+      const count = document.getElementById(countId);
+      if (!items || !items.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      count.textContent = String(items.length);
+      clear(body);
+      const ul = h('ul', { class: 'queue-list' });
+      for (const i of items) {
+        ul.appendChild(
+          h('li', {}, [
+            h('span', { class: 'qsite', text: i.site || '—' }),
+            h('span', { class: 'qnote', text: i[keyField] || '' }),
+          ])
+        );
+      }
+      body.appendChild(ul);
+    }
+
+    function renderQueues(d) {
+      const run = latestRun(d.autorun);
+      renderQueue('browserClaudeSection', 'browserClaudeBody', 'browserClaudeCount',
+                  run && run.needs_browser_claude, 'question');
+      renderQueue('userInterventionSection', 'userInterventionBody', 'userInterventionCount',
+                  run && run.needs_user_intervention, 'note');
+      renderQueue('recoveredSection', 'recoveredBody', 'recoveredCount',
+                  run && run.recovered, 'note');
+    }
+
+    function renderEvents(d) {
+      const section = document.getElementById('eventsSection');
+      const log = document.getElementById('eventLog');
+      const events = d.scheduler.events || [];
+      if (!events.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      clear(log);
+      for (const e of events) {
+        log.appendChild(
+          h('div', { class: 'event-line' }, [
+            h('span', { class: 'ts', text: e.ts }),
+            h('span', { class: 'msg', text: e.msg }),
+          ])
+        );
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch(API);
+        const data = await res.json();
+        renderStatus(data);
+        renderSummary(data);
+        renderZeroDelta(data);
+        renderUnknownDelta(data);
+        renderFailures(data);
+        renderFixResults(data);
+        renderQueues(data);
+        renderEvents(data);
+      } catch (err) {
+        console.error('autorun refresh failed:', err);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      refresh();
+      setInterval(refresh, 30000);
+    });
+  </script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

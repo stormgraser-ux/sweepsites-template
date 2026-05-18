@@ -1,0 +1,19 @@
+node_modules/
+data/*
+!data/.gitkeep
+.env
+
+# Secrets — never commit
+automation/secrets.js
+
+# Local scratch
+.claude/
+.playwright-mcp/
+tmp/
+*.log
+
+# Debug screenshots
+/*.png
+
+# OS files
+.DS_Store

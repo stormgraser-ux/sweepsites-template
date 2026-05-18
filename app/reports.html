@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History - Sweepsites Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <style>
+    .date-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      padding: 20px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .date-controls label {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .date-controls input[type="date"] {
+      padding: 10px 14px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .date-controls input[type="date"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .preset-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .preset-btn {
+      padding: 8px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+    .preset-btn.active {
+      background: var(--accent-subtle);
+      border-color: var(--accent);
+      color: var(--accent-light);
+    }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .summary-card .label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .summary-card .value {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .summary-card .value.positive { color: var(--success-light); }
+    .summary-card .value.negative { color: var(--danger); }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .data-table th, .data-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table th {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+    .data-table tr:hover {
+      background: var(--bg-hover);
+    }
+    .table-container {
+      max-height: 500px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .type-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-dark);
+      padding: 4px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      width: fit-content;
+    }
+    .type-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .type-tab:hover {
+      color: var(--text);
+    }
+    .type-tab.active {
+      background: var(--bg-card);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <div class="nav-brand-icon">S</div>
+        <span>Sweepsites</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Tracker</a>
+        <a href="/autorun.html" class="nav-link">Autorun</a>
+        <a href="/taxes.html" class="nav-link">Tax Estimator</a>
+        <a href="/reports.html" class="nav-link active">History</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1>Transaction History</h1>
+      <p class="page-subtitle">View and export your purchase, redemption, and reward history</p>
+    </div>
+
+    <!-- Type Tabs -->
+    <div class="type-tabs">
+      <button class="type-tab active" data-type="purchases">Purchases</button>
+      <button class="type-tab" data-type="redemptions">Redemptions</button>
+      <button class="type-tab" data-type="rewards">Daily Rewards</button>
+      <button class="type-tab" data-type="sessions">Sessions</button>
+    </div>
+
+    <!-- Date Range -->
+    <div class="date-controls">
+      <div>
+        <label>Start Date</label>
+        <input type="date" id="startDate">
+      </div>
+      <div>
+        <label>End Date</label>
+        <input type="date" id="endDate">
+      </div>
+      <div class="preset-buttons">
+        <button class="preset-btn" data-preset="ytd">YTD</button>
+        <button class="preset-btn" data-preset="2025">2025</button>
+        <button class="preset-btn" data-preset="2024">2024</button>
+        <button class="preset-btn" data-preset="month">30 Days</button>
+        <button class="preset-btn" data-preset="all">All</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="applyBtn">Apply</button>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards" id="summaryCards">
+      <!-- Filled by JS -->
+    </div>
+
+    <!-- Export Summaries Section -->
+    <div class="section-card" style="margin-bottom: 24px;">
+      <div class="section-header">
+        <h3>Export Summaries</h3>
+      </div>
+      <div class="section-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Exports are informational summaries only. Not tax forms.
+        </p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" id="exportLedgerBtn">Export Ledger CSV</button>
+          <button class="btn btn-secondary btn-sm" id="exportBySiteBtn">Export Totals by Site CSV</button>
+          <button class="btn btn-secondary btn-sm" id="exportTaxInputsBtn">Export Tax Inputs Summary CSV</button>
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 12px; font-style: italic;">
+          Tax Inputs Summary includes a disclaimer field. Use for reference only when preparing returns.
+        </p>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3 id="tableTitle">Transactions</h3>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 11px; color: var(--text-muted);">Exports are informational summaries only. Not tax forms.</span>
+          <button class="btn btn-secondary btn-sm" id="exportBtn">Export Current View</button>
+        </div>
+      </div>
+      <div class="section-body" style="padding: 0;">
+        <div class="table-container" style="border: none; border-radius: 0;">
+          <table class="data-table" id="dataTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '';
+    let currentType = 'purchases';
+    let currentData = null;
+
+    const presets = {
+      today: () => {
+        const today = new Date().toISOString().split('T')[0];
+        return { start: today, end: today };
+      },
+      week: () => {
+        const end = new Date();
+        const start = new Date(end - 7 * 24 * 60 * 60 * 1000);
+        return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+      },
+      month: () => {
+        const end = new Date();
+        const start = new Date(end - 30 * 24 * 60 * 60 * 1000);
+        return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+      },
+      ytd: () => {
+        const year = new Date().getFullYear();
+        return { start: `${year}-01-01`, end: new Date().toISOString().split('T')[0] };
+      },
+      2025: () => ({ start: '2025-01-01', end: '2025-12-31' }),
+      2024: () => ({ start: '2024-01-01', end: '2024-12-31' }),
+      all: () => ({ start: '', end: '' })
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set default to YTD
+      const ytd = presets.ytd();
+      document.getElementById('startDate').value = ytd.start;
+      document.getElementById('endDate').value = ytd.end;
+
+      // Type tabs
+      document.querySelectorAll('.type-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentType = btn.dataset.type;
+          loadData();
+        });
+      });
+
+      // Preset buttons
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = presets[btn.dataset.preset]();
+          document.getElementById('startDate').value = preset.start;
+          document.getElementById('endDate').value = preset.end;
+          document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          loadData();
+        });
+      });
+
+      // Apply button
+      document.getElementById('applyBtn').addEventListener('click', loadData);
+
+      // Export button (current view)
+      document.getElementById('exportBtn').addEventListener('click', exportData);
+
+      // Summary export buttons
+      document.getElementById('exportLedgerBtn').addEventListener('click', () => exportSummary('ledger'));
+      document.getElementById('exportBySiteBtn').addEventListener('click', () => exportSummary('by-site'));
+      document.getElementById('exportTaxInputsBtn').addEventListener('click', () => exportSummary('tax-inputs'));
+
+      loadData();
+    });
+
+    async function loadData() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const params = new URLSearchParams();
+      if (start) params.set('start', start);
+      if (end) params.set('end', end);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/history/${currentType}?${params}`);
+        currentData = await res.json();
+        renderDataTable(currentType, currentData);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+      }
+    }
+
+    function renderDataTable(type, data) {
+      const { summary, data: rows } = data;
+
+      // Summary cards based on type
+      let summaryHTML = '';
+      if (type === 'purchases') {
+        summaryHTML = `
+          <div class="summary-card"><div class="label">Total Purchases</div><div class="value">${summary.count}</div></div>
+          <div class="summary-card"><div class="label">USD Spent</div><div class="value negative">$${summary.total_usd.toFixed(2)}</div></div>
+          <div class="summary-card"><div class="label">Coins Received</div><div class="value">${summary.total_coins.toFixed(2)}</div></div>
+        `;
+      } else if (type === 'redemptions') {
+        summaryHTML = `
+          <div class="summary-card"><div class="label">Total Redemptions</div><div class="value">${summary.count}</div></div>
+          <div class="summary-card"><div class="label">USD Received</div><div class="value positive">$${summary.total_usd.toFixed(2)}</div></div>
+          <div class="summary-card"><div class="label">Pending</div><div class="value">${summary.pending}</div></div>
+        `;
+      } else if (type === 'rewards') {
+        summaryHTML = `
+          <div class="summary-card"><div class="label">Total Collections</div><div class="value">${summary.count}</div></div>
+          <div class="summary-card"><div class="label">Total SC</div><div class="value">${summary.total_coins.toFixed(2)}</div></div>
+        `;
+      } else if (type === 'sessions') {
+        summaryHTML = `
+          <div class="summary-card"><div class="label">Sessions</div><div class="value">${summary.count}</div></div>
+          <div class="summary-card"><div class="label">Total Wagered</div><div class="value">${summary.total_wagered.toFixed(2)}</div></div>
+          <div class="summary-card"><div class="label">Net P&L</div><div class="value ${summary.net_pnl >= 0 ? 'positive' : 'negative'}">${summary.net_pnl >= 0 ? '+' : ''}${summary.net_pnl.toFixed(2)}</div></div>
+        `;
+      }
+      document.getElementById('summaryCards').innerHTML = summaryHTML;
+
+      // Table headers and rows
+      const configs = {
+        purchases: {
+          title: 'Purchase Transactions',
+          headers: ['Date', 'Casino', 'USD Spent', 'Coins', 'Note'],
+          row: r => `<tr><td>${r.date}</td><td>${r.casino_name}</td><td>$${r.usd_spent.toFixed(2)}</td><td>${r.amount_coins.toFixed(2)}</td><td>${r.note || ''}</td></tr>`
+        },
+        redemptions: {
+          title: 'Redemption Transactions',
+          headers: ['Date', 'Casino', 'Coins', 'USD', 'Method', 'Status'],
+          row: r => `<tr><td>${r.date}</td><td>${r.casino_name}</td><td>${r.amount_coins.toFixed(2)}</td><td>$${r.usd_received.toFixed(2)}</td><td>${r.redemption_method}</td><td style="color: ${r.status === 'pending' ? '#fbbf24' : 'var(--success-light)'}">${r.status}</td></tr>`
+        },
+        rewards: {
+          title: 'Daily Reward Collections',
+          headers: ['Date', 'Casino', 'Type', 'Amount'],
+          row: r => `<tr><td>${r.date}</td><td>${r.casino_name}</td><td>${r.reward_type}</td><td>${r.amount_coins.toFixed(4)}</td></tr>`
+        },
+        sessions: {
+          title: 'Gaming Sessions',
+          headers: ['Date', 'Casino', 'Game', 'Start', 'End', 'P&L'],
+          row: r => {
+            const pnl = r.ending_balance - r.starting_balance;
+            return `<tr><td>${r.date}</td><td>${r.casino_name}</td><td>${r.game_name}</td><td>${r.starting_balance.toFixed(2)}</td><td>${r.ending_balance.toFixed(2)}</td><td style="color: ${pnl >= 0 ? 'var(--success-light)' : 'var(--danger)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td></tr>`;
+          }
+        }
+      };
+
+      const config = configs[type];
+      document.getElementById('tableTitle').textContent = config.title;
+      document.getElementById('tableHead').innerHTML = `<tr>${config.headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      document.getElementById('tableBody').innerHTML = rows.map(config.row).join('');
+    }
+
+    function exportData() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const params = new URLSearchParams();
+      if (start) params.set('start', start);
+      if (end) params.set('end', end);
+
+      window.location.href = `${API_BASE}/api/history/export/${currentType}?${params}`;
+    }
+
+    function exportSummary(type) {
+      // Determine year from date range
+      const start = document.getElementById('startDate').value;
+      let year = new Date().getFullYear().toString();
+      if (start) {
+        year = start.substring(0, 4);
+      }
+
+      const params = new URLSearchParams();
+      params.set('year', year);
+
+      // For tax inputs, include current settings (could be enhanced with a modal)
+      if (type === 'tax-inputs') {
+        params.set('filing_status', 'single');
+        params.set('treatment', 'sweepstakes');
+        params.set('include_pending', 'false');
+      }
+
+      window.location.href = `${API_BASE}/api/export/${type}?${params}`;
+    }
+  </script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

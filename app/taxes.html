@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tax Estimator - Sweepsites Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <style>
+    .tax-year-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .tax-year-section h2 {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .tax-year-section .year-badge {
+      background: var(--accent);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .tax-year-section .year-badge.current {
+      background: #fbbf24;
+      color: #1a1a2e;
+    }
+    .tax-year-section .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .tax-breakdown {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 768px) {
+      .tax-breakdown {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tax-column h4 {
+      color: var(--text-muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tax-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tax-line:last-child {
+      border-bottom: none;
+    }
+    .tax-line .label {
+      color: var(--text-muted);
+    }
+    .tax-line .value {
+      font-weight: 600;
+    }
+    .tax-line.total {
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 2px solid var(--border);
+    }
+    .tax-line.total .label {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .tax-line.total .value {
+      font-size: 20px;
+    }
+    .tax-line.total .value.negative {
+      color: var(--danger);
+    }
+    .tax-warning {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 24px;
+      font-size: 14px;
+      color: #fbbf24;
+    }
+    .tax-note {
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .gambling-note {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid #fbbf24;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #fbbf24;
+    }
+    .effective-rate {
+      text-align: center;
+      padding: 20px;
+      background: var(--bg-dark);
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+    .effective-rate .rate {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .effective-rate .label {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .tax-controls {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .tax-controls h3 {
+      margin-bottom: 16px;
+      font-size: 16px;
+    }
+    .tax-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .tax-control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .tax-control-group label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .tax-control-group input[type="number"],
+    .tax-control-group select {
+      padding: 10px 14px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .tax-control-group input[type="number"]:focus,
+    .tax-control-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-switch.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch.active::after {
+      transform: translateX(20px);
+    }
+    .toggle-label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .credit-line {
+      color: var(--success-light);
+    }
+    .refund-badge {
+      background: var(--success-light);
+      color: #1a1a2e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .advanced-section {
+      border-top: 1px solid var(--border);
+      margin-top: 20px;
+      padding-top: 16px;
+    }
+    .advanced-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .advanced-toggle:hover {
+      color: var(--text);
+    }
+    .advanced-toggle .arrow {
+      transition: transform 0.2s;
+    }
+    .advanced-toggle.open .arrow {
+      transform: rotate(90deg);
+    }
+    .advanced-content {
+      display: none;
+    }
+    .advanced-content.open {
+      display: block;
+    }
+    .stub-label {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-style: italic;
+    }
+  </style>
+  <script src="tax-engine.js"></script>
+  <script src="csv-builder.js"></script>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <div class="nav-brand-icon">S</div>
+        <span>Sweepsites</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Tracker</a>
+        <a href="/autorun.html" class="nav-link">Autorun</a>
+        <a href="/taxes.html" class="nav-link active">Tax Estimator</a>
+        <a href="/reports.html" class="nav-link">History</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1>Tax Estimator</h1>
+      <p class="page-subtitle">Estimate your federal and Oregon state taxes based on sweepstakes activity</p>
+    </div>
+
+    <!-- Tax Controls -->
+    <div class="tax-controls">
+      <h3>Calculation Options</h3>
+      <div class="tax-controls-grid">
+        <div class="tax-control-group">
+          <label>Filing Status</label>
+          <select id="filingStatus">
+            <option value="single">Single</option>
+            <option value="mfj">Married Filing Jointly</option>
+            <option value="hoh">Head of Household</option>
+          </select>
+        </div>
+        <div class="tax-control-group">
+          <label>Treatment</label>
+          <select id="taxTreatment">
+            <option value="sweepstakes">Sweepstakes (standard deduction)</option>
+            <option value="gambling">Gambling (itemize losses)</option>
+          </select>
+        </div>
+        <div class="tax-control-group">
+          <label>Include pending redemptions?</label>
+          <div class="toggle-group">
+            <div class="toggle-switch" id="includePendingToggle"></div>
+            <span class="toggle-label" id="includePendingLabel">No</span>
+          </div>
+        </div>
+        <div class="tax-control-group">
+          <label>Net capital gain/loss estimate</label>
+          <input type="number" id="netCapitalInput" step="0.01" value="0" placeholder="Negative = loss">
+          <span style="font-size: 11px; color: var(--text-muted);">Negative values use up to $3,000 loss</span>
+        </div>
+        <div class="tax-control-group">
+          <label>Dependents</label>
+          <input type="number" id="dependentsInput" min="0" step="1" value="0">
+          <span style="font-size: 11px; color: var(--text-muted);">Total number of dependents</span>
+        </div>
+        <div class="tax-control-group" id="childrenUnder17Group" style="display: none;">
+          <label>Children under 17</label>
+          <input type="number" id="childrenUnder17Input" min="0" step="1" value="0">
+          <span style="font-size: 11px; color: var(--text-muted);">Qualifying for Child Tax Credit</span>
+        </div>
+      </div>
+
+      <!-- Dependents Credit Note -->
+      <div id="dependentsNote" class="gambling-note" style="display: none; background: rgba(148, 163, 184, 0.1); border-color: var(--border); color: var(--text-muted);">
+        Estimated, simplified credit model. Actual eligibility varies.
+      </div>
+
+      <!-- Gambling-specific: Other Itemized Deductions -->
+      <div id="otherItemizedSection" style="display: none; margin-top: 16px;">
+        <div class="tax-control-group" style="max-width: 220px;">
+          <label>Other itemized deductions</label>
+          <input type="number" id="otherItemized" min="0" step="0.01" value="0">
+          <span style="font-size: 11px; color: var(--text-muted);">SALT, mortgage interest, etc.</span>
+        </div>
+      </div>
+
+      <!-- Gambling Note -->
+      <div id="gamblingNote" class="gambling-note" style="display: none;">
+        <strong>Note:</strong> Gambling losses are deductible only if you itemize and only up to your gambling winnings.
+      </div>
+
+      <!-- Advanced Section -->
+      <div class="advanced-section">
+        <div class="advanced-toggle" id="advancedToggle">
+          <span class="arrow">▶</span>
+          <span>Advanced Options</span>
+        </div>
+        <div class="advanced-content" id="advancedContent">
+          <div class="tax-controls-grid">
+            <div class="tax-control-group">
+              <label>Cap loss override (max $3,000)</label>
+              <input type="number" id="capLossOverride" min="0" max="3000" step="0.01" value="" placeholder="Leave blank to use auto">
+              <span style="font-size: 11px; color: var(--text-muted);">Overrides net capital calculation</span>
+            </div>
+            <div class="tax-control-group">
+              <label>Apply Oregon kicker?</label>
+              <div class="toggle-group">
+                <div class="toggle-switch" id="applyKickerToggle"></div>
+                <span class="toggle-label" id="applyKickerLabel">No</span>
+              </div>
+            </div>
+            <div class="tax-control-group">
+              <label>2024 OR-40 line 24 (kicker base)</label>
+              <input type="number" id="or40Line24" min="0" step="0.01" value="0">
+            </div>
+            <div class="tax-control-group">
+              <label>Filing Status (MFS)</label>
+              <div class="toggle-group">
+                <input type="checkbox" id="mfsCheckbox" style="width: 18px; height: 18px;">
+                <span class="toggle-label">Married Filing Separately</span>
+              </div>
+              <span class="stub-label">Uses same brackets as Single</span>
+            </div>
+            <div class="tax-control-group">
+              <label>Apply CTC/ODC phaseout?</label>
+              <div class="toggle-group">
+                <div class="toggle-switch" id="applyPhaseoutToggle"></div>
+                <span class="toggle-label" id="applyPhaseoutLabel">No</span>
+              </div>
+              <span class="stub-label">Simplified phaseout (MFJ: $400k, others: $200k)</span>
+            </div>
+            <div class="tax-control-group">
+              <label>Age 65+ / Blind</label>
+              <div style="display: flex; gap: 16px;">
+                <div class="toggle-group">
+                  <input type="checkbox" id="age65Checkbox" disabled style="width: 18px; height: 18px;">
+                  <span class="toggle-label">65+</span>
+                </div>
+                <div class="toggle-group">
+                  <input type="checkbox" id="blindCheckbox" disabled style="width: 18px; height: 18px;">
+                  <span class="toggle-label">Blind</span>
+                </div>
+              </div>
+              <span class="stub-label">Coming soon - additional deduction</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; align-items: center;">
+        <button class="btn btn-primary" id="recalculateTaxBtn">Calculate</button>
+        <button class="btn btn-secondary btn-sm" id="exportTaxSummaryCsvBtn" disabled>Export Tax Summary CSV</button>
+        <span style="font-size: 11px; color: var(--text-muted);">For recordkeeping only. Not a tax form.</span>
+      </div>
+    </div>
+
+    <!-- Tax Preview Content -->
+    <div id="taxPreviewContent">
+      <!-- Filled by JS -->
+    </div>
+
+    <div class="tax-note">
+      <strong>Disclaimer:</strong> This is an illustrative estimate only. Tax treatment of sweepstakes casinos varies by jurisdiction and individual circumstances.
+      Under sweepstakes treatment, purchases are NOT deductible. Under gambling treatment, losses can offset winnings (but not exceed them).
+      The Oregon kicker is based on your 2024 OR-40 line 24. Consult a tax professional for accurate tax advice.
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '';
+
+    let state = {
+      filingStatus: 'single',
+      treatment: 'sweepstakes',
+      includePending: false,
+      netCapital: 0,
+      capLossOverride: null,
+      otherItemized: 0,
+      applyKicker: false,
+      or40Line24: 0,
+      useMfs: false,
+      dependents: 0,
+      childrenUnder17: 0,
+      applyCreditsPhaseout: false,
+      data2025: null,
+      purchases2025: null
+    };
+
+    // Store the last calculation for export
+    let lastCalculation = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      setupControls();
+      await loadData();
+      render();
+    });
+
+    function setupControls() {
+      // Filing status
+      const filingSelect = document.getElementById('filingStatus');
+      filingSelect.addEventListener('change', () => {
+        state.filingStatus = filingSelect.value;
+      });
+
+      // Treatment
+      const treatmentSelect = document.getElementById('taxTreatment');
+      treatmentSelect.addEventListener('change', () => {
+        state.treatment = treatmentSelect.value;
+        updateGamblingVisibility();
+      });
+
+      // Include pending toggle
+      const pendingToggle = document.getElementById('includePendingToggle');
+      const pendingLabel = document.getElementById('includePendingLabel');
+      pendingToggle.addEventListener('click', () => {
+        state.includePending = !state.includePending;
+        pendingToggle.classList.toggle('active', state.includePending);
+        pendingLabel.textContent = state.includePending ? 'Yes' : 'No';
+      });
+
+      // Net capital input
+      const netCapitalInput = document.getElementById('netCapitalInput');
+      netCapitalInput.addEventListener('change', () => {
+        state.netCapital = parseFloat(netCapitalInput.value) || 0;
+      });
+
+      // Other itemized
+      const otherItemizedInput = document.getElementById('otherItemized');
+      otherItemizedInput.addEventListener('change', () => {
+        state.otherItemized = parseFloat(otherItemizedInput.value) || 0;
+      });
+
+      // Dependents input
+      const dependentsInput = document.getElementById('dependentsInput');
+      dependentsInput.addEventListener('change', () => {
+        state.dependents = Math.max(0, Math.floor(parseFloat(dependentsInput.value) || 0));
+        dependentsInput.value = state.dependents;
+        updateDependentsVisibility();
+      });
+
+      // Children under 17 input
+      const childrenUnder17Input = document.getElementById('childrenUnder17Input');
+      childrenUnder17Input.addEventListener('change', () => {
+        const val = Math.max(0, Math.floor(parseFloat(childrenUnder17Input.value) || 0));
+        state.childrenUnder17 = Math.min(val, state.dependents);
+        childrenUnder17Input.value = state.childrenUnder17;
+      });
+
+      // Advanced toggle
+      const advancedToggle = document.getElementById('advancedToggle');
+      const advancedContent = document.getElementById('advancedContent');
+      advancedToggle.addEventListener('click', () => {
+        advancedToggle.classList.toggle('open');
+        advancedContent.classList.toggle('open');
+      });
+
+      // Cap loss override
+      const capLossOverrideInput = document.getElementById('capLossOverride');
+      capLossOverrideInput.addEventListener('change', () => {
+        const val = capLossOverrideInput.value.trim();
+        state.capLossOverride = val === '' ? null : parseFloat(val) || 0;
+      });
+
+      // Apply kicker toggle
+      const kickerToggle = document.getElementById('applyKickerToggle');
+      const kickerLabel = document.getElementById('applyKickerLabel');
+      kickerToggle.addEventListener('click', () => {
+        state.applyKicker = !state.applyKicker;
+        kickerToggle.classList.toggle('active', state.applyKicker);
+        kickerLabel.textContent = state.applyKicker ? 'Yes' : 'No';
+      });
+
+      // OR-40 line 24
+      const or40Input = document.getElementById('or40Line24');
+      or40Input.addEventListener('change', () => {
+        state.or40Line24 = parseFloat(or40Input.value) || 0;
+      });
+
+      // MFS checkbox
+      const mfsCheckbox = document.getElementById('mfsCheckbox');
+      mfsCheckbox.addEventListener('change', () => {
+        state.useMfs = mfsCheckbox.checked;
+        if (state.useMfs) {
+          TaxEngine.setMfsEnabled(true);
+          state.filingStatus = 'mfs';
+          document.getElementById('filingStatus').value = 'single';
+          document.getElementById('filingStatus').disabled = true;
+        } else {
+          state.filingStatus = document.getElementById('filingStatus').value;
+          document.getElementById('filingStatus').disabled = false;
+        }
+      });
+
+      // Apply phaseout toggle
+      const phaseoutToggle = document.getElementById('applyPhaseoutToggle');
+      const phaseoutLabel = document.getElementById('applyPhaseoutLabel');
+      phaseoutToggle.addEventListener('click', () => {
+        state.applyCreditsPhaseout = !state.applyCreditsPhaseout;
+        phaseoutToggle.classList.toggle('active', state.applyCreditsPhaseout);
+        phaseoutLabel.textContent = state.applyCreditsPhaseout ? 'Yes' : 'No';
+      });
+
+      // Recalculate button
+      const recalcBtn = document.getElementById('recalculateTaxBtn');
+      recalcBtn.addEventListener('click', () => {
+        // Sync all values from inputs
+        state.filingStatus = state.useMfs ? 'mfs' : document.getElementById('filingStatus').value;
+        state.treatment = document.getElementById('taxTreatment').value;
+        state.netCapital = parseFloat(document.getElementById('netCapitalInput').value) || 0;
+        state.otherItemized = parseFloat(document.getElementById('otherItemized').value) || 0;
+        const overrideVal = document.getElementById('capLossOverride').value.trim();
+        state.capLossOverride = overrideVal === '' ? null : parseFloat(overrideVal) || 0;
+        state.or40Line24 = parseFloat(document.getElementById('or40Line24').value) || 0;
+        state.dependents = Math.max(0, Math.floor(parseFloat(document.getElementById('dependentsInput').value) || 0));
+        const childVal = Math.max(0, Math.floor(parseFloat(document.getElementById('childrenUnder17Input').value) || 0));
+        state.childrenUnder17 = Math.min(childVal, state.dependents);
+        render();
+      });
+
+      // Export Tax Summary CSV button
+      const exportCsvBtn = document.getElementById('exportTaxSummaryCsvBtn');
+      exportCsvBtn.addEventListener('click', () => {
+        if (!lastCalculation) {
+          alert('Please calculate first before exporting.');
+          return;
+        }
+        exportTaxSummaryCsv();
+      });
+
+      updateGamblingVisibility();
+      updateDependentsVisibility();
+    }
+
+    function updateGamblingVisibility() {
+      const isGambling = state.treatment === 'gambling';
+      document.getElementById('otherItemizedSection').style.display = isGambling ? 'block' : 'none';
+      document.getElementById('gamblingNote').style.display = isGambling ? 'block' : 'none';
+    }
+
+    function updateDependentsVisibility() {
+      const hasDependents = state.dependents > 0;
+      document.getElementById('childrenUnder17Group').style.display = hasDependents ? 'flex' : 'none';
+      document.getElementById('dependentsNote').style.display = hasDependents ? 'block' : 'none';
+      // Ensure children <= dependents
+      if (state.childrenUnder17 > state.dependents) {
+        state.childrenUnder17 = state.dependents;
+        document.getElementById('childrenUnder17Input').value = state.childrenUnder17;
+      }
+    }
+
+    async function loadData() {
+      try {
+        const [res2025, purchases2025] = await Promise.all([
+          fetch(`${API_BASE}/api/history/redemptions?start=2025-01-01&end=2025-12-31`).then(r => r.json()),
+          fetch(`${API_BASE}/api/history/purchases?start=2025-01-01&end=2025-12-31`).then(r => r.json())
+        ]);
+        state.data2025 = res2025;
+        state.purchases2025 = purchases2025;
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        // Use empty data for demo
+        state.data2025 = { summary: { total_usd: 0, pending: 0 }, data: [] };
+        state.purchases2025 = { summary: { total_usd: 0 }, data: [] };
+      }
+    }
+
+    function getCapitalLossUsed() {
+      // If override is set, use it
+      if (state.capLossOverride !== null) {
+        return Math.min(3000, Math.max(0, state.capLossOverride));
+      }
+      // Otherwise, compute from net capital
+      if (state.netCapital < 0) {
+        return Math.min(3000, Math.abs(state.netCapital));
+      }
+      return 0;
+    }
+
+    function render() {
+      const { data2025, purchases2025, includePending, treatment, filingStatus, otherItemized, applyKicker, or40Line24, dependents, childrenUnder17, applyCreditsPhaseout } = state;
+
+      if (!data2025 || !purchases2025) {
+        document.getElementById('taxPreviewContent').innerHTML = '<p>Loading data...</p>';
+        return;
+      }
+
+      // Calculate income
+      let redemptionsReceived = 0;
+      let redemptionsPending = 0;
+
+      for (const r of data2025.data) {
+        if (r.status === 'received' || r.status === 'completed') {
+          redemptionsReceived += r.usd_received || 0;
+        } else if (r.status === 'pending') {
+          redemptionsPending += r.usd_received || 0;
+        }
+      }
+
+      const purchasesTotal = purchases2025.summary.total_usd || 0;
+      const capitalLossUsed = getCapitalLossUsed();
+
+      // Build domain inputs
+      const domain = {
+        redemptionsReceived,
+        redemptionsPending,
+        purchasesTotal,
+        includePending,
+        treatment,
+        otherItemizedDeductions: treatment === 'gambling' ? otherItemized : 0
+      };
+
+      // Build dependents inputs
+      const dependentsInput = dependents > 0 ? {
+        dependents,
+        childrenUnder17: Math.min(childrenUnder17, dependents)
+      } : null;
+
+      // Use the new TaxEngine combined calculation
+      let result;
+      try {
+        result = TaxEngine.calcCombinedFromDomain({
+          taxYear: 2025,
+          filingStatus,
+          domain,
+          capitalLossUsed,
+          applyKicker,
+          or40Line24,
+          dependents: dependentsInput,
+          applyCreditsPhaseout
+        });
+      } catch (err) {
+        console.error('Tax calculation error:', err);
+        document.getElementById('taxPreviewContent').innerHTML = `<p style="color: var(--danger);">Calculation error: ${err.message}</p>`;
+        lastCalculation = null;
+        document.getElementById('exportTaxSummaryCsvBtn').disabled = true;
+        return;
+      }
+
+      // Store calculation for CSV export
+      lastCalculation = {
+        selections: {
+          taxYear: 2025,
+          filingStatus,
+          state: 'OR',
+          treatment,
+          includePending,
+          otherItemizedDeductions: treatment === 'gambling' ? otherItemized : 0,
+          capitalLossUsed,
+          dependents: dependents,
+          childrenUnder17: Math.min(childrenUnder17, dependents),
+          applyKicker,
+          or40Line24
+        },
+        inputs: {
+          redemptionsReceived,
+          redemptionsPending,
+          purchasesTotal
+        },
+        result
+      };
+
+      // Enable export button
+      document.getElementById('exportTaxSummaryCsvBtn').disabled = false;
+
+      const { federal, oregon, totalTaxLiability, grossIncome, agi } = result;
+      const netProfit = grossIncome - purchasesTotal;
+      const effectiveRatePercent = grossIncome > 0 ? ((totalTaxLiability / grossIncome) * 100).toFixed(1) : '0.0';
+      const takeHome = TaxEngine.roundToCents(grossIncome - totalTaxLiability + oregon.refundCredit);
+
+      // Format helpers
+      const fmt = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      document.getElementById('taxPreviewContent').innerHTML = `
+        <!-- 2025 Section -->
+        <div class="tax-year-section">
+          <h2>
+            <span class="year-badge">2025</span>
+            Tax Year Summary
+          </h2>
+          <p class="subtitle">Filing Status: ${getFilingStatusLabel(filingStatus)} | Treatment: ${treatment === 'sweepstakes' ? 'Sweepstakes' : 'Gambling (itemized)'}</p>
+
+          <div class="tax-breakdown">
+            <div class="tax-column">
+              <h4>Income Summary</h4>
+              <div class="tax-line">
+                <span class="label">Redemptions Received</span>
+                <span class="value">$${fmt(redemptionsReceived)}</span>
+              </div>
+              ${includePending ? `
+              <div class="tax-line">
+                <span class="label">Pending Redemptions</span>
+                <span class="value">$${fmt(redemptionsPending)}</span>
+              </div>
+              ` : ''}
+              <div class="tax-line">
+                <span class="label">Gross Income</span>
+                <span class="value">$${fmt(grossIncome)}</span>
+              </div>
+              ${capitalLossUsed > 0 ? `
+              <div class="tax-line">
+                <span class="label">Est. Capital Loss Used</span>
+                <span class="value credit-line">-$${fmt(capitalLossUsed)}</span>
+              </div>
+              ` : ''}
+              <div class="tax-line">
+                <span class="label">Adjusted Gross Income (AGI)</span>
+                <span class="value">$${fmt(agi)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Total Purchases ${treatment === 'sweepstakes' ? '(Not Deductible)' : '(For itemizing)'}</span>
+                <span class="value" style="color: var(--text-muted);">$${fmt(purchasesTotal)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Net Profit (Reference)</span>
+                <span class="value" style="color: ${netProfit >= 0 ? 'var(--success-light)' : 'var(--danger)'}">$${fmt(netProfit)}</span>
+              </div>
+            </div>
+
+            <div class="tax-column">
+              <h4>Federal Tax (IRS)</h4>
+              <div class="tax-line">
+                <span class="label">AGI</span>
+                <span class="value">$${fmt(agi)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">${federal.deductionMethod === 'itemized' ? 'Itemized Deduction' : 'Standard Deduction'}</span>
+                <span class="value">-$${fmt(federal.deductionUsed)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Taxable Income</span>
+                <span class="value">$${fmt(federal.taxableIncome)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Marginal Bracket</span>
+                <span class="value">${(federal.marginalBracket * 100).toFixed(0)}%</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Tax Before Credits</span>
+                <span class="value">$${fmt(federal.federalTax)}</span>
+              </div>
+              ${result.federalCredits ? `
+              <div class="tax-line">
+                <span class="label">Estimated Credits (CTC/ODC)</span>
+                <span class="value credit-line">-$${fmt(result.federalCredits.nonrefundableCreditsApplied)}</span>
+              </div>
+              ${result.federalCredits.phaseoutAmount > 0 ? `
+              <div class="tax-line" style="font-size: 12px;">
+                <span class="label" style="padding-left: 12px;">Phaseout applied</span>
+                <span class="value" style="color: var(--text-muted);">-$${fmt(result.federalCredits.phaseoutAmount)}</span>
+              </div>
+              ` : ''}
+              <div class="tax-line total">
+                <span class="label">Federal Tax After Credits</span>
+                <span class="value negative">$${fmt(result.federalCredits.federalTaxAfterCredits)}</span>
+              </div>
+              ` : `
+              <div class="tax-line total">
+                <span class="label">Federal Tax</span>
+                <span class="value negative">$${fmt(federal.federalTax)}</span>
+              </div>
+              `}
+            </div>
+          </div>
+
+          <div class="tax-breakdown" style="margin-top: 24px;">
+            <div class="tax-column">
+              <h4>Oregon State Tax</h4>
+              <div class="tax-line">
+                <span class="label">AGI</span>
+                <span class="value">$${fmt(agi)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">${oregon.deductionMethod === 'itemized' ? 'Itemized Deduction' : 'OR Standard Deduction'}</span>
+                <span class="value">-$${fmt(oregon.deductionUsed)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Taxable Income</span>
+                <span class="value">$${fmt(oregon.taxableIncome)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Tax Before Credits</span>
+                <span class="value">$${fmt(oregon.taxBeforeCredits)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Less: Exemption Credit</span>
+                <span class="value credit-line">-$${fmt(oregon.exemptionCredit)}</span>
+              </div>
+              ${applyKicker ? `
+              <div class="tax-line">
+                <span class="label">Less: Kicker Credit</span>
+                <span class="value credit-line">-$${fmt(oregon.kickerCredit)}</span>
+              </div>
+              ` : ''}
+              <div class="tax-line total">
+                <span class="label">Oregon Tax Owed</span>
+                <span class="value ${oregon.taxOwed > 0 ? 'negative' : ''}">$${fmt(oregon.taxOwed)}${oregon.refundCredit > 0 ? `<span class="refund-badge">+$${fmt(oregon.refundCredit)} refund</span>` : ''}</span>
+              </div>
+            </div>
+
+            <div class="tax-column">
+              <h4>Total Tax Liability</h4>
+              ${result.federalCredits ? `
+              <div class="tax-line">
+                <span class="label">Federal Tax (before credits)</span>
+                <span class="value" style="color: var(--text-muted);">$${fmt(federal.federalTax)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Less: Dependents Credits</span>
+                <span class="value credit-line">-$${fmt(result.federalCredits.nonrefundableCreditsApplied)}</span>
+              </div>
+              <div class="tax-line">
+                <span class="label">Federal Tax (after credits)</span>
+                <span class="value">$${fmt(result.federalCredits.federalTaxAfterCredits)}</span>
+              </div>
+              ` : `
+              <div class="tax-line">
+                <span class="label">Federal Tax</span>
+                <span class="value">$${fmt(federal.federalTax)}</span>
+              </div>
+              `}
+              <div class="tax-line">
+                <span class="label">Oregon Tax</span>
+                <span class="value">$${fmt(oregon.taxOwed)}</span>
+              </div>
+              ${oregon.refundCredit > 0 ? `
+              <div class="tax-line">
+                <span class="label">Oregon Refund Credit</span>
+                <span class="value credit-line">-$${fmt(oregon.refundCredit)}</span>
+              </div>
+              ` : ''}
+              <div class="tax-line total">
+                <span class="label">Total Estimated Tax</span>
+                <span class="value negative">$${fmt(totalTaxLiability)}</span>
+              </div>
+              <div class="effective-rate">
+                <div class="rate">${effectiveRatePercent}%</div>
+                <div class="label">Effective Tax Rate</div>
+              </div>
+              <div class="tax-line" style="margin-top: 16px;">
+                <span class="label">After-Tax Take Home</span>
+                <span class="value" style="color: var(--success-light);">$${fmt(takeHome)}</span>
+              </div>
+            </div>
+          </div>
+
+          ${result.federalCredits ? `
+          <div class="tax-note" style="margin-top: 16px; background: rgba(148, 163, 184, 0.08);">
+            <strong>Credits Note:</strong> Credits are simplified and may differ from actual IRS eligibility and refundability.
+            CTC: $2,000/child under 17. ODC: $500/other dependent. Only nonrefundable portion applied.
+          </div>
+          ` : ''}
+
+          <div class="tax-warning">
+            <strong>Estimated tax reserve (illustrative):</strong> $${fmt(totalTaxLiability)}<br>
+            <span style="font-size: 12px;">This is not a filing amount or payment recommendation.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function getFilingStatusLabel(status) {
+      const labels = {
+        single: 'Single',
+        mfj: 'Married Filing Jointly',
+        hoh: 'Head of Household',
+        mfs: 'Married Filing Separately'
+      };
+      return labels[status] || status;
+    }
+
+    function exportTaxSummaryCsv() {
+      if (!lastCalculation) {
+        alert('No calculation available to export.');
+        return;
+      }
+
+      try {
+        const csvData = CsvBuilder.buildTaxSummaryCsvRow(lastCalculation);
+        const filename = CsvBuilder.getTaxSummaryCsvFilename(lastCalculation.selections.taxYear);
+        CsvBuilder.downloadCsv(csvData.csv, filename);
+      } catch (err) {
+        console.error('Export error:', err);
+        alert('Failed to export CSV: ' + err.message);
+      }
+    }
+  </script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>
