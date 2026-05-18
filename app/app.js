@@ -1407,9 +1407,10 @@ async function confirmCollection() {
       collections.push(newCollection);
     }
 
+    const siteId = currentSite.id;
     const siteName = currentSite.name;
-    closeCollectModal();
     render();
+    openCollectModal(siteId);
     showToast(siteName + ' marked as collected!');
   } catch (err) {
     console.error('Failed to save collection:', err);
@@ -1499,8 +1500,9 @@ async function uncollectSite() {
     const index = collections.findIndex(c => c.id === existingCollection.id);
     if (index >= 0) collections.splice(index, 1);
 
-    closeCollectModal();
+    const siteId = currentSite.id;
     render();
+    openCollectModal(siteId);
     showToast(siteName + ' uncollected');
   } catch (err) {
     console.error('Failed to uncollect site:', err);
