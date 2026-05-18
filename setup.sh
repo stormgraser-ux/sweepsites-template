@@ -33,14 +33,25 @@ echo "[4/4] Seeding sample data..."
 node server/seed.js
 
 echo ""
+echo "[5/5] Starting dashboard..."
+
+# Kill anything already on port 3050
+if command -v lsof &>/dev/null; then
+  PID=$(lsof -ti :3050 2>/dev/null || true)
+  if [ -n "$PID" ]; then
+    echo "  Killing existing process on port 3050 (PID $PID)..."
+    kill "$PID" 2>/dev/null || true
+    sleep 1
+  fi
+elif command -v fuser &>/dev/null; then
+  fuser -k 3050/tcp 2>/dev/null || true
+  sleep 1
+fi
+
+echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "Start the dashboard:"
-echo "  npm start"
+echo "Dashboard: http://localhost:3050"
 echo ""
-echo "Then open: http://localhost:3050"
-echo ""
-echo "To run a collector:"
-echo "  node automation/collectors/your-site.js --dry-run"
-echo ""
-echo "See README.md for full documentation."
+
+npm start
